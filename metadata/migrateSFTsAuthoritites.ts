@@ -13,13 +13,9 @@ async function migrateSFTsAuthoritites() {
   const signer = umi.eddsa.createKeypairFromSecretKey(bs58.decode(privateKey));
   umi.use(signerIdentity(createSignerFromKeypair(umi, signer)));
 
-  const privateKeyNew = process.env.NEW_UA_SECRET_KEY as string;
-  const umiNew = createUmi(process.env.RPC as string, "confirmed").use(mplCore());
-  const signerNew = umi.eddsa.createKeypairFromSecretKey(bs58.decode(privateKeyNew));
-  umiNew.use(signerIdentity(createSignerFromKeypair(umi, signerNew)));
-
-  const collectionKey = publicKey("DmL46V46U5VM4UgrJbVQvWhVyD1zjZGGVRWeMv46eWt9");
-  const assets = await fetchAllDigitalAssetByUpdateAuthority(umiNew, signer.publicKey);
+  const newAuthority = publicKey("PUBLIC_KEY");
+  const collectionKey = publicKey("COLLECTION_KEY");
+  const assets = await fetchAllDigitalAssetByUpdateAuthority(umi, signer.publicKey);
   const filteredAssets = assets.filter(
     (el) =>
       el.metadata.collection.__option === "Some" &&
@@ -34,24 +30,24 @@ async function migrateSFTsAuthoritites() {
     if (
       asset.mint.mintAuthority.__option === "Some" &&
       asset.mint.freezeAuthority.__option === "Some" &&
-      asset.mint.mintAuthority.value.toString() === signerNew.publicKey.toString() &&
-      asset.mint.freezeAuthority.value.toString() === signerNew.publicKey.toString()
+      asset.mint.mintAuthority.value.toString() === newAuthority.toString() &&
+      asset.mint.freezeAuthority.value.toString() === newAuthority.toString()
     ) {
       console.log(`#${i} is already updated`);
       return;
     }
-    console.log(`Handling i: ${i}, mint: ${itemMint}`);
+    console.log(`Handling i: ${i}, mint: ${itemMint.toString()}`);
 
     let builder = await setAuthority(umi, {
       authorityType: AuthorityType.MintTokens,
-      newAuthority: umiNew.identity.publicKey,
-      owned: publicKey(itemMint),
+      newAuthority: newAuthority,
+      owned: itemMint,
       owner: umi.identity.publicKey,
     }).add(
       setAuthority(umi, {
         authorityType: AuthorityType.FreezeAccount,
-        newAuthority: umiNew.identity.publicKey,
-        owned: publicKey(itemMint),
+        newAuthority: newAuthority,
+        owned: itemMint,
         owner: umi.identity.publicKey,
       })
     );
